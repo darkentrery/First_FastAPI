@@ -1,0 +1,36 @@
+version: '3.9'
+
+volumes:
+  postgres_data_fast:
+
+services:
+#  web:
+#    build:
+#      context: .
+#      dockerfile: Dockerfile.django
+#    container_name: web_ep
+#    command: >
+#      bash -c "python manage.py migrate &&
+#               python manage.py runserver 0.0.0.0:8000"
+#    restart: on-failure
+#    volumes:
+#      - .:/code
+#    ports:
+#      - "8000:8000"
+#    env_file:
+#      - ./.env.django
+#      - ./.env.postgres
+#    depends_on:
+#      - postgres
+  postgres:
+    image: postgres:13.0-alpine
+    container_name: postgres_fast
+    restart: always
+    ports:
+      - "5437:5432"
+    volumes:
+      -   postgres_data_fast:/var/lib/postgresql/data/
+    env_file:
+      - ./.env.postgres
+
+
