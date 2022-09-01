@@ -1,38 +1,40 @@
-import databases as databases
+from typing import List
+
 from fastapi import FastAPI, Response, Request, Cookie, Depends
-from crud import *
+from pydantic.main import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
-from models import SQLALCHEMY_DATABASE_URL, SessionLocal, User
+from app import service
+from app.base import get_session
+from models import User
 
-
-database = databases.Database(SQLALCHEMY_DATABASE_URL)
 
 app = FastAPI()
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+class UserSchema(BaseModel):
+    username: str
+    password: int
+    email: str
 
 
-# @app.on_event("startup")
-# async def startup():
-#     await database.connect()
-#
-#
-# @app.on_event("shutdown")
-# async def shutdown():
-#     await database.disconnect()
-
-
-@app.get("/")
-async def root(request: Request, response: Response, db=Depends(get_db)):
+@app.get("/", response_model=List[UserSchema])
+async def get_users(request: Request, response: Response, session: AsyncSession = Depends(get_session)):
     request = request
     response = response
-    user = db.query(User)
+    users = await service.get_users(session)
+    # return {"message": "Hello World"}
+    return [UserSchema(username=c.username, password=c.password, email=c.email) for c in users]
 
 
-    return {"message": "Hello World"}
+@app.post("/post/")
+async def add_user(user: UserSchema, session: AsyncSession = Depends(get_session)):
+    user = service.add_user(session, user.username, str(user.password), user.email)
+    try:
+        await session.commit()
+        return user
+    except IntegrityError as ex:
+        await session.rollback()
+        # raise DuplicatedEntryError("The city is already stored")
+        raise Exception
